@@ -77,12 +77,12 @@ struct ContentView: View {
 
             Spacer()
 
-            Button(action: panelState.refreshSimulation) {
+            Button(action: panelState.refreshMetrics) {
                 Image(systemName: "arrow.clockwise")
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel("Simülasyon verilerini yenile")
-            .help("Simülasyon verilerini yenile")
+            .accessibilityLabel("Sistem verilerini yenile")
+            .help("Sistem verilerini yenile")
 
         }
         .padding(.bottom, 7)

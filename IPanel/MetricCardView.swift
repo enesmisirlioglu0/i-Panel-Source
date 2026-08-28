@@ -53,8 +53,13 @@ struct MetricCardView: View {
                     .lineLimit(1)
             }
 
-            ProgressView(value: metric.progress)
-                .tint(metric.metric.tint)
+            if let progress = metric.progress {
+                ProgressView(value: progress)
+                    .tint(metric.metric.tint)
+            } else {
+                Color.clear
+                    .frame(height: 4)
+            }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)

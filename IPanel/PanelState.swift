@@ -2,9 +2,7 @@
 //  PanelState.swift
 //  i-Panel
 //
-//  First phase: every metric is generated locally as simulation data.
-//  No Mac hardware sensor, system setting, network connection, or cloud
-//  account is accessed.
+//  Shows public, local macOS system statistics without sending them anywhere.
 //
 
 import Combine
@@ -71,22 +69,9 @@ struct MetricCard: Identifiable {
     let detail: String
     let value: String
     let status: String
-    let progress: Double
+    let progress: Double?
 
     var id: PanelMetric { metric }
-}
-
-private struct SimulatedSnapshot {
-    var cpuUsage = 42
-    var memoryUsage = 56
-    var memoryUsedGB = 9
-    var diskUsage = 61
-    var diskUsedGB = 312
-    var batteryLevel = 76
-    var batteryTemperature = 32
-    var batteryStatus = "Normal"
-    var downloadRate = 14.2
-    var uploadRate = 2.4
 }
 
 @MainActor
@@ -99,9 +84,15 @@ final class PanelState: ObservableObject {
     @Published private(set) var draggedMetric: PanelMetric?
     @Published private(set) var dragDestinationMetric: PanelMetric?
 
-    @Published private var snapshot = SimulatedSnapshot()
-    private var simulationTick = 0
-    private var simulationTimer: AnyCancellable?
+    @Published private var snapshot = SystemMetricsSnapshot(
+        cpuUsage: nil,
+        memory: nil,
+        disk: nil,
+        battery: .unavailable,
+        network: nil
+    )
+    private var metricsProvider = SystemMetricsProvider()
+    private var refreshTimer: AnyCancellable?
     private var remembersMetricOrder: Bool
     private var refreshInterval: TimeInterval
     private var dragOriginIndex: Int?
@@ -114,8 +105,8 @@ final class PanelState: ObservableObject {
         self.refreshInterval = refreshInterval
         metricOrder = remembersMetricOrder ? Self.restoredMetricOrder() : PanelMetric.allCases
 
-        refreshSimulation()
-        configureSimulationTimer()
+        refreshMetrics()
+        configureRefreshTimer()
     }
 
     func setRemembersMetricOrder(_ enabled: Bool) {
@@ -139,17 +130,17 @@ final class PanelState: ObservableObject {
         }
 
         refreshInterval = interval
-        configureSimulationTimer()
+        configureRefreshTimer()
     }
 
-    private func configureSimulationTimer() {
-        simulationTimer?.cancel()
+    private func configureRefreshTimer() {
+        refreshTimer?.cancel()
 
-        simulationTimer = Timer.publish(every: refreshInterval, on: .main, in: .common)
+        refreshTimer = Timer.publish(every: refreshInterval, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
                 Task { @MainActor [weak self] in
-                    self?.refreshSimulation()
+                    self?.refreshMetrics()
                 }
             }
     }
@@ -158,30 +149,8 @@ final class PanelState: ObservableObject {
         metricOrder.map(metricCard(for:))
     }
 
-    func refreshSimulation() {
-        simulationTick += 1
-
-        let phase = Double(simulationTick)
-        let cpuUsage = 34 + Int((sin(phase * 0.62) + 1) * 19)
-        let memoryUsage = 50 + Int((sin(phase * 0.27 + 0.9) + 1) * 12)
-        let diskUsage = 61 + Int((sin(phase * 0.08) + 1) * 2)
-        let batteryLevel = max(18, 77 - (simulationTick % 18))
-        let batteryTemperature = 30 + Int((sin(phase * 0.42) + 1) * 3)
-        let downloadRate = 5.8 + abs(sin(phase * 0.74)) * 22.4
-        let uploadRate = 0.7 + abs(cos(phase * 0.51)) * 4.3
-
-        snapshot = SimulatedSnapshot(
-            cpuUsage: cpuUsage,
-            memoryUsage: memoryUsage,
-            memoryUsedGB: max(1, Int((Double(memoryUsage) / 100) * 16)),
-            diskUsage: diskUsage,
-            diskUsedGB: Int((Double(diskUsage) / 100) * 512),
-            batteryLevel: batteryLevel,
-            batteryTemperature: batteryTemperature,
-            batteryStatus: batteryStatus(for: batteryLevel),
-            downloadRate: downloadRate,
-            uploadRate: uploadRate
-        )
+    func refreshMetrics() {
+        snapshot = metricsProvider.sample()
     }
 
     func resetMetricOrder() {
@@ -306,60 +275,133 @@ final class PanelState: ObservableObject {
     private func metricCard(for metric: PanelMetric) -> MetricCard {
         switch metric {
         case .cpu:
-            MetricCard(
+            guard let usage = snapshot.cpuUsage else {
+                return MetricCard(
+                    metric: .cpu,
+                    detail: "Anlık toplam işlemci kullanımı",
+                    value: "Ölçülüyor…",
+                    status: "İlk ölçüm",
+                    progress: nil
+                )
+            }
+
+            return MetricCard(
                 metric: .cpu,
-                detail: "İşlemci yükü ve çalışma durumu",
-                value: "\(snapshot.cpuUsage)%",
-                status: snapshot.cpuUsage >= 70 ? "Yoğun" : "Normal",
-                progress: Double(snapshot.cpuUsage) / 100
+                detail: "Anlık toplam işlemci kullanımı",
+                value: "%\(percentage(usage))",
+                status: usage >= 0.70 ? "Yoğun" : "Normal",
+                progress: usage
             )
         case .memory:
-            MetricCard(
+            guard let memory = snapshot.memory else {
+                return unavailableMetricCard(
+                    metric: .memory,
+                    detail: "Kullanılan RAM kapasitesi"
+                )
+            }
+
+            return MetricCard(
                 metric: .memory,
                 detail: "Kullanılan RAM kapasitesi",
-                value: "\(snapshot.memoryUsedGB) / 16 GB",
-                status: "%\(snapshot.memoryUsage)",
-                progress: Double(snapshot.memoryUsage) / 100
+                value: "\(formattedCapacity(memory.usedBytes)) / \(formattedCapacity(memory.totalBytes))",
+                status: "%\(percentage(memory.usageFraction))",
+                progress: memory.usageFraction
             )
         case .disk:
-            MetricCard(
+            guard let disk = snapshot.disk else {
+                return unavailableMetricCard(
+                    metric: .disk,
+                    detail: "Başlangıç diski kullanımı"
+                )
+            }
+
+            return MetricCard(
                 metric: .disk,
-                detail: "Dahili depolama kullanımı",
-                value: "\(snapshot.diskUsedGB) / 512 GB",
-                status: "%\(snapshot.diskUsage)",
-                progress: Double(snapshot.diskUsage) / 100
+                detail: "Başlangıç diski kullanımı",
+                value: "\(formattedCapacity(disk.usedBytes)) / \(formattedCapacity(disk.totalBytes))",
+                status: "%\(percentage(disk.usageFraction))",
+                progress: disk.usageFraction
             )
         case .battery:
-            MetricCard(
-                metric: .battery,
-                detail: "Doluluk, sıcaklık ve güç durumu",
-                value: "%\(snapshot.batteryLevel) · \(snapshot.batteryTemperature)°C",
-                status: snapshot.batteryStatus,
-                progress: Double(snapshot.batteryLevel) / 100
-            )
+            return batteryMetricCard
         case .network:
-            MetricCard(
+            guard let network = snapshot.network else {
+                return MetricCard(
+                    metric: .network,
+                    detail: "Mac toplam indirme ve yükleme hızı",
+                    value: "Ölçülüyor…",
+                    status: "İlk ölçüm",
+                    progress: nil
+                )
+            }
+
+            return MetricCard(
                 metric: .network,
-                detail: "Anlık indirme ve yükleme hızı",
-                value: "↓ \(formattedRate(snapshot.downloadRate)) MB/sn",
-                status: "↑ \(formattedRate(snapshot.uploadRate)) MB/sn",
-                progress: min(snapshot.downloadRate / 30, 1)
+                detail: "Mac toplam indirme ve yükleme hızı",
+                value: "↓ \(formattedRate(network.downloadBytesPerSecond))",
+                status: "↑ \(formattedRate(network.uploadBytesPerSecond))",
+                progress: min(network.downloadBytesPerSecond / 10_000_000, 1)
             )
         }
     }
 
-    private func batteryStatus(for level: Int) -> String {
-        switch level {
-        case 65...:
-            "Normal"
-        case 35...:
-            "Düşüyor"
-        default:
-            "Düşük güç"
+    private var batteryMetricCard: MetricCard {
+        switch snapshot.battery {
+        case .available(let battery):
+            return MetricCard(
+                metric: .battery,
+                detail: "Doluluk ve güç durumu",
+                value: "%\(percentage(battery.level))",
+                status: battery.status,
+                progress: battery.level
+            )
+        case .notPresent:
+            return MetricCard(
+                metric: .battery,
+                detail: "Doluluk ve güç durumu",
+                value: "—",
+                status: "Batarya yok",
+                progress: nil
+            )
+        case .unavailable:
+            return unavailableMetricCard(
+                metric: .battery,
+                detail: "Doluluk ve güç durumu"
+            )
         }
     }
 
-    private func formattedRate(_ value: Double) -> String {
-        String(format: "%.1f", value)
+    private func unavailableMetricCard(metric: PanelMetric, detail: String) -> MetricCard {
+        MetricCard(
+            metric: metric,
+            detail: detail,
+            value: "—",
+            status: "Veri alınamadı",
+            progress: nil
+        )
+    }
+
+    private func percentage(_ fraction: Double) -> Int {
+        Int((min(max(fraction, 0), 1) * 100).rounded())
+    }
+
+    private func formattedCapacity(_ bytes: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useMB, .useGB]
+        formatter.countStyle = .file
+        formatter.includesUnit = true
+        formatter.isAdaptive = true
+
+        return formatter.string(fromByteCount: max(bytes, 0))
+    }
+
+    private func formattedRate(_ bytesPerSecond: Double) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB, .useGB]
+        formatter.countStyle = .file
+        formatter.includesUnit = true
+        formatter.isAdaptive = true
+
+        return "\(formatter.string(fromByteCount: Int64(max(bytesPerSecond, 0))))/sn"
     }
 }

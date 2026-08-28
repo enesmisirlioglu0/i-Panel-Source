@@ -8,24 +8,30 @@ Kaynak kod [MIT Lisansı](LICENSE) ile sunulur: kullanabilir, değiştirebilir v
 
 i-Panel, proje sahibinin ürün fikri, kapsamı, görsel tercihleri ve gerçek Mac üzerindeki kabul testleri doğrultusunda geliştirildi. Swift/Xcode uygulama kodu, hata ayıklama ve dokümantasyon çalışmaları ise proje sahibinin yönlendirmesiyle **ChatGPT 5.6 Terra (OpenAI Codex)** yapay zekâ geliştirme asistanının desteği kullanılarak birlikte yürütüldü. Proje sahipliği ile tüm ürün ve yayın kararları proje sahibine aittir.
 
-## 1.2 (Build 3)
+## 1.3 (Build 4)
 
 - Hedef: macOS 13 ve sonrası
 - Mimari: SwiftUI `MenuBarExtra(.window)`; ayarlar penceresi ve yerel macOS davranışları için AppKit
 - Menü çubuğu: macOS'un açık/koyu görünüme uyum sağlayan yerleşik tek renkli üçlü-kart sembolü
 - Finder / DMG simgesi: kırmızı, mavi ve yeşil üç karttan oluşan i-Panel işareti
-- Yerel kabul testi: menü simgesi ve panel, `Ayar`, `Sıfırla` ve doğrudan sürükle-bırak sıralama geliştirici Mac'inde onaylandı.
+- Gerçek sistem verileri: CPU, bellek, başlangıç diski, batarya doluluk/durumu ve Mac toplam ağ hızı
 - Dağıtım paketi: imzasız, noterlenmemiş, universal (`arm64` + `x86_64`) DMG
 
-## Faz 1: simülasyon paneli
+## Gerçek sistem göstergeleri
 
-- CPU, bellek, disk, batarya sıcaklığı/durumu ve anlık indirme/yükleme için beş kart
-- 1 / 3 / 5 saniyelik yenileme aralığıyla güncellenen, inandırıcı fakat tamamen simüle edilmiş değerler
+- CPU: Mach `host_statistics` sayaçlarından iki örnek arasındaki gerçek toplam işlemci kullanımı
+- Bellek: fiziksel RAM ve sanal bellek istatistiklerinden kullanılan/toplam kapasite
+- Disk: başlangıç diskinin kullanılan/toplam kapasitesi; kullanıcı dosyaları taranmaz
+- Batarya: gerçek doluluk yüzdesi ile şarj, adaptör veya batarya kullanım durumu; sıcaklık bu sürümde gösterilmez
+- İnternet: etkin yerel ağ arayüzlerinin byte sayaçlarından Mac toplam indirme/yükleme hızı
+- 1 / 3 / 5 saniyelik yenileme aralığı; CPU ve ağ ilk ölçümde uydurma değer yerine kısa süreliğine `Ölçülüyor…` gösterir
 - Kartları istediğiniz anda doğrudan sürükle-bırakla sıralama, sırayı yerelde hatırlama ve varsayılan sıraya dönme
 - Alt sağda `Ayar` ve `Sıfırla` düğmeleri
 - Dock simgesini göster/gizle, girişte açılma isteği, kart sırasını hatırlama ve yenileme sıklığı ayarları
 
-Bu faz gerçek CPU, bellek, disk, batarya veya ağ verisi toplamaz; kart değerleri simülasyondur. Uygulama ağa bağlanmaz, bulut hesabı kullanmaz ve tercihler yalnızca bu Mac'te saklanır.
+Bu göstergeler yalnızca uygulamanın çalıştığı Mac'te salt okunur public macOS API'leriyle ölçülür. i-Panel dışarıya ağ bağlantısı kurmaz, metrikleri veya kişisel verileri göndermez, bulut hesabı kullanmaz ve özel bir macOS izin penceresi istemez. Tercihler yalnızca bu Mac'te saklanır.
+
+Masaüstü Mac'lerde dahili batarya bulunmuyorsa kart `Batarya yok` gösterir. VPN veya sanal ağ arayüzleri kullanıldığında ağ kartındaki toplam, kapsülleme nedeniyle küçük farklar içerebilir; gösterge uygulama bazlı değil Mac toplam trafiğidir.
 
 ## İmzasız DMG oluşturma
 
@@ -50,5 +56,5 @@ dist/i-Panel-<sürüm>-build-<build>-unsigned.dmg
 ## Güvenlik ilkeleri
 
 - Anahtar, parola, token, provisioning dosyası veya kişisel veri commit edilmez.
-- Üçüncü taraf servis, CloudKit, App Group, giriş sistemi veya sistem izni eklenmeden önce ayrı kapsam ve onay gerekir.
+- Gerçek metrikler üçüncü taraf servis, CloudKit, hesap, erişilebilirlik, Full Disk Access veya ağ paketi yakalama kullanmadan yerelde okunur.
 - Açık `i-Panel` deposu belgeleri, ikon görselini ve GitHub Release DMG varlıklarını taşır; bu depo ise public Swift/Xcode kaynaklarını taşır.
