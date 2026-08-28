@@ -1,0 +1,29 @@
+name: macOS Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build i-Panel
+    runs-on: macos-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build macOS app without signing
+        run: >-
+          xcodebuild
+          -project IPanel.xcodeproj
+          -scheme IPanel
+          -configuration Debug
+          -sdk macosx
+          CODE_SIGNING_ALLOWED=NO
+          build
