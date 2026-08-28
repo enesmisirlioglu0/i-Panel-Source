@@ -7,6 +7,8 @@ xcuserdata/
 *.xcscmblueprint
 DerivedData/
 build/
+dist/
+*.dmg
 *.moved-aside
 *.xcuserdatad
 
