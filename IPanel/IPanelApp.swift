@@ -9,9 +9,13 @@ import SwiftUI
 
 @main
 struct IPanelApp: App {
+    @StateObject private var panelState = PanelState()
+
     var body: some Scene {
-        WindowGroup {
+        MenuBarExtra("i-Panel", systemImage: panelState.statusSymbol) {
             ContentView()
+                .environmentObject(panelState)
         }
+        .menuBarExtraStyle(.window)
     }
 }
