@@ -4,6 +4,7 @@
 //
 
 import AppKit
+import Combine
 import SwiftUI
 
 enum PanelLayout {
@@ -12,63 +13,56 @@ enum PanelLayout {
 }
 
 @main
-@MainActor
-final class IPanelAppDelegate: NSObject, NSApplicationDelegate {
-    private let preferences = PanelPreferences()
-    private lazy var panelState = PanelState(
-        remembersMetricOrder: preferences.remembersMetricOrder,
-        refreshInterval: preferences.refreshInterval.rawValue
-    )
-    private let popover = NSPopover()
+struct IPanelApp: App {
+    @NSApplicationDelegateAdaptor(IPanelApplicationDelegate.self) private var applicationDelegate
+    @State private var isMenuBarExtraInserted = true
+    @StateObject private var preferences: PanelPreferences
+    @StateObject private var panelState: PanelState
+    @StateObject private var settingsWindowController = PanelSettingsWindowController()
 
-    private var statusItem: NSStatusItem?
-    private var settingsWindowController: NSWindowController?
+    init() {
+        let preferences = PanelPreferences()
 
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        preferences.applyDockIconVisibility()
-        configurePopover()
-        configureStatusItem()
-    }
-
-    private func configurePopover() {
-        popover.behavior = .transient
-        popover.animates = true
-        popover.contentSize = NSSize(width: PanelLayout.width, height: PanelLayout.height)
-        popover.contentViewController = NSHostingController(
-            rootView: ContentView(onOpenSettings: { [weak self] in
-                self?.showSettings()
-            })
-            .environmentObject(panelState)
+        _preferences = StateObject(wrappedValue: preferences)
+        _panelState = StateObject(
+            wrappedValue: PanelState(
+                remembersMetricOrder: preferences.remembersMetricOrder,
+                refreshInterval: preferences.refreshInterval.rawValue
+            )
         )
     }
 
-    private func configureStatusItem() {
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.image = PanelStatusImage.make()
-        item.button?.imagePosition = .imageOnly
-        item.button?.toolTip = "i-Panel"
-        item.button?.target = self
-        item.button?.action = #selector(togglePanel(_:))
-        statusItem = item
-    }
-
-    @objc
-    private func togglePanel(_ sender: Any?) {
-        guard let button = statusItem?.button else {
-            return
+    var body: some Scene {
+        MenuBarExtra(
+            "i-Panel",
+            systemImage: "rectangle.3.group.fill",
+            isInserted: $isMenuBarExtraInserted
+        ) {
+            ContentView {
+                settingsWindowController.show(
+                    preferences: preferences,
+                    panelState: panelState
+                )
+            }
+            .environmentObject(panelState)
         }
-
-        if popover.isShown {
-            popover.performClose(sender)
-        } else {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        }
+        .menuBarExtraStyle(.window)
     }
+}
 
-    private func showSettings() {
-        popover.performClose(nil)
+@MainActor
+private final class IPanelApplicationDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        PanelPreferences.applyStoredDockIconVisibility()
+    }
+}
 
-        if let settingsWindow = settingsWindowController?.window {
+@MainActor
+private final class PanelSettingsWindowController: ObservableObject {
+    private var windowController: NSWindowController?
+
+    func show(preferences: PanelPreferences, panelState: PanelState) {
+        if let settingsWindow = windowController?.window {
             settingsWindow.makeKeyAndOrderFront(nil)
         } else {
             let hostingController = NSHostingController(
@@ -84,7 +78,7 @@ final class IPanelAppDelegate: NSObject, NSApplicationDelegate {
             settingsWindow.center()
 
             let controller = NSWindowController(window: settingsWindow)
-            settingsWindowController = controller
+            windowController = controller
             controller.showWindow(self)
         }
 

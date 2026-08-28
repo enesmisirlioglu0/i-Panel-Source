@@ -1,62 +1,50 @@
-# i-Panel
+# i-Panel kaynak deposu
 
-i-Panel, macOS menü çubuğunda çalışan küçük bir durum göstergesi ve hızlı kontrol panelidir.
+i-Panel, macOS menü çubuğunda çalışan küçük bir durum göstergesi ve hızlı kontrol panelidir. Bu depo Swift/Xcode kaynaklarını içerir; indirilebilir uygulama paketi ve kurulum bilgileri açık [i-Panel](https://github.com/enesmisirlioglu0/i-Panel) deposunda yayımlanır.
 
-## Başlangıç durumu
+Kaynak kod [MIT Lisansı](LICENSE) ile sunulur: kullanabilir, değiştirebilir ve dağıtabilirsiniz; lisans metni ve telif bildirimi korunmalıdır.
 
-- Sürüm: `1.1 (Build 2)`
+## 1.2 (Build 3)
+
 - Hedef: macOS 13 ve sonrası
-- Arayüz: SwiftUI + AppKit `NSStatusItem` ve geçici `NSPopover`
-- Derleme doğrulaması: 28 Ağustos 2026'da Xcode 26.6 ile, imzalama kapalı Faz 1 temiz macOS Debug derlemesi başarılı
-- Manuel menü çubuğu etkileşim doğrulaması: Henüz yapılmadı
-- Dağıtım: Henüz indirilebilir DMG veya GitHub Release yoktur.
-
-Apple'ın kendi Denetim Merkezi içine üçüncü taraf modül eklemek için genel kullanıma açık bir API'si yoktur. i-Panel bu yüzden Denetim Merkezi'nin yanındaki menü çubuğunda, yerel `NSStatusItem` ve geçici `NSPopover` yapısıyla çalışır.
+- Mimari: SwiftUI `MenuBarExtra(.window)`; ayarlar penceresi ve yerel macOS davranışları için AppKit
+- Menü çubuğu: macOS'un açık/koyu görünüme uyum sağlayan yerleşik tek renkli üçlü-kart sembolü
+- Finder / DMG simgesi: kırmızı, mavi ve yeşil üç karttan oluşan i-Panel işareti
+- Yerel kabul testi: menü simgesi ve panel, `Ayar`, `Sıfırla` ve doğrudan sürükle-bırak sıralama geliştirici Mac'inde onaylandı.
+- Dağıtım paketi: imzasız, noterlenmemiş, universal (`arm64` + `x86_64`) DMG
 
 ## Faz 1: simülasyon paneli
 
-- Menü çubuğunda i-Panel göstergesi
-- Sağ üst simgeye bağlı, turkuaz tonlu büyük açılır panel
 - CPU, bellek, disk, batarya sıcaklığı/durumu ve anlık indirme/yükleme için beş kart
-- Ayarlardan seçilen 1 / 3 / 5 saniyelik yenileme aralığıyla güncellenen, inandırıcı fakat tamamen simüle edilmiş değerler
-- Kartları her an doğrudan sürükle-bırak yöntemiyle taşıma, bu sırayı yerelde hatırlama ve varsayılan sıraya dönme
-- Alt sağda `Ayar` ve `Sıfırla` denetimleri
-- Panel dışındaki bir arayüz öğesine tıklanınca otomatik kapanan yerel macOS popover davranışı
-- Ayarlardan kalıcı Dock simgesi görünürlüğü, macOS girişinde açılma isteği, kart sırasını hatırlama ve yenileme sıklığı
+- 1 / 3 / 5 saniyelik yenileme aralığıyla güncellenen, inandırıcı fakat tamamen simüle edilmiş değerler
+- Kartları istediğiniz anda doğrudan sürükle-bırakla sıralama, sırayı yerelde hatırlama ve varsayılan sıraya dönme
+- Alt sağda `Ayar` ve `Sıfırla` düğmeleri
+- Dock simgesini göster/gizle, girişte açılma isteği, kart sırasını hatırlama ve yenileme sıklığı ayarları
 
-Bu faz gerçek CPU/bellek/disk/batarya/ağ verisi toplamaz, ağa bağlanmaz ve bulut hesabı kullanmaz. Kart sırası, yenileme tercihi ve Dock görünürlüğü yalnız cihazdaki yerel tercih olarak saklanır; yeni bir gizlilik veya yönetici izni istenmez. Girişte açılma anahtarı yalnız kullanıcı onu açtığında macOS'a kayıt isteği yollar.
+Bu faz gerçek CPU, bellek, disk, batarya veya ağ verisi toplamaz; kart değerleri simülasyondur. Uygulama ağa bağlanmaz, bulut hesabı kullanmaz ve tercihler yalnızca bu Mac'te saklanır.
 
-### Başlangıçta açılma sınırı
-
-Bu ayar macOS 13+'ta `SMAppService.mainApp` kullanır. Apple bu kayıt için geçerli uygulama imzası ister; bu yüzden imzasız Debug/DMG paketi seçeneği hata veya kullanılamaz durumunu gösterebilir. İmzalı geliştirme paketiyle doğrulanmadan, imzasız public DMG için girişte açılma özelliği vaat edilmez.
-
-## Xcode ile çalıştırma
-
-1. `IPanel.xcodeproj` dosyasını Xcode'da açın.
-2. Aktif şemanın `IPanel` olduğunu doğrulayın.
-3. Mac hedefini seçip Run düğmesine basın.
-4. Uygulama açıldığında menü çubuğundaki i-Panel simgesini seçin.
-
-## Dağıtım planı
-
-Proje tamamlandığında public `i-Panel` deposunun GitHub Releases alanına **imzasız** bir `.dmg` konması planlanır. Kaynak kod bu özel depoda kalır. İlk paket Developer ID ile imzalanmış veya noterlenmiş olmayacağından macOS Gatekeeper uyarısı beklenir; public kurulum notu, uygulamayı Uygulamalar klasörüne taşıma ve Finder'da sağ tıklayıp `Aç` seçeneğini kullanma adımlarını açıkça içerecektir.
-
-Henüz DMG oluşturulmadı veya Release yayımlanmadı. Yayın, tamamlanan sürümün son görsel/işlev kontrolünden ve ayrıca verilen son yayın onayından sonra yapılır. İmzasız ilk pakette girişte açılma ayarının çalışmaması beklenebilir; bu özellik için ileride ayrı bir imzalama kararı gerekir.
-
-Paketleme zamanı geldiğinde, yerel ve imzasız DMG şu betikle üretilecektir:
+## İmzasız DMG oluşturma
 
 ```zsh
 zsh scripts/create-unsigned-dmg.zsh
 ```
 
-Betik `dist/i-Panel-<sürüm>-unsigned.dmg` çıktısını üretir; GitHub'a hiçbir şey yüklemez ve var olan aynı isimli DMG'nin üzerine yazmayı reddeder.
+Betik `Release` yapılandırmasını hem Apple Silicon hem Intel için üretir, imzalamayı kapatır ve şunu oluşturur:
 
-## Depo sınırı
+```text
+dist/i-Panel-<sürüm>-build-<build>-unsigned.dmg
+```
 
-Bu klasör, özel `i-Panel-Source` kaynak deposu içindir. Swift/Xcode kaynakları, imzalama ayrıntıları veya ileride eklenecek hassas yapılandırmalar açık dokümantasyon deposuna taşınmaz.
+`dist/` ve `.dmg` dosyaları Git tarafından izlenmez. DMG yalnız açık depodaki GitHub Release varlığı olarak yayımlanır; Swift/Xcode kaynakları bu public depoda yer alır.
+
+## Kurulum sınırı
+
+İlk public paket Developer ID ile imzalanmış veya noterlenmiş değildir. macOS bir uyarı gösterirse kullanıcı uygulamayı `Applications` klasörüne taşıyıp Finder'da uygulamaya sağ tıklayarak **Aç** → **Aç** yolunu kullanmalıdır; Gatekeeper'ı kapatma yönlendirmesi verilmez.
+
+`Girişte i-Panel’i aç` ayarı `SMAppService.mainApp` kullanır. macOS bu kayıt için geçerli uygulama imzası isteyebileceğinden imzasız public pakette bu ayar çalışmayabilir.
 
 ## Güvenlik ilkeleri
 
 - Anahtar, parola, token, provisioning dosyası veya kişisel veri commit edilmez.
 - Üçüncü taraf servis, CloudKit, App Group, giriş sistemi veya sistem izni eklenmeden önce ayrı kapsam ve onay gerekir.
-- Kamuya açık `i-Panel` deposu belgeleri ve ilerideki imzasız DMG Release varlıklarını barındırır; Swift/Xcode kaynakları içermez.
+- Açık `i-Panel` deposu belgeleri, ikon görselini ve GitHub Release DMG varlıklarını taşır; bu depo ise public Swift/Xcode kaynaklarını taşır.

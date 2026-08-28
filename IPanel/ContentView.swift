@@ -3,28 +3,30 @@
 //  i-Panel
 //
 
-import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
+
+private enum MetricCardLayout {
+    static let height: CGFloat = 74
+    static let spacing: CGFloat = 6
+    static let slotHeight: CGFloat = height + spacing
+}
 
 struct ContentView: View {
     let onOpenSettings: () -> Void
 
     @EnvironmentObject private var panelState: PanelState
+    @State private var dragOffset = CGSize.zero
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             header
 
-            ScrollView {
-                LazyVStack(spacing: 6) {
-                    ForEach(panelState.orderedMetrics) { metric in
-                        metricCard(metric)
-                    }
+            VStack(spacing: MetricCardLayout.spacing) {
+                ForEach(panelState.orderedMetrics) { metric in
+                    metricCard(metric)
                 }
-                .padding(.vertical, 2)
             }
-            .scrollIndicators(.never)
+            .padding(.vertical, 2)
             .frame(height: 398)
 
             footer
@@ -39,6 +41,10 @@ struct ContentView: View {
         .shadow(color: .black.opacity(0.22), radius: 18, y: 10)
         .padding(8)
         .frame(width: PanelLayout.width, height: PanelLayout.height)
+        .onDisappear {
+            dragOffset = .zero
+            panelState.finishDragging()
+        }
     }
 
     private var panelGradient: LinearGradient {
@@ -89,20 +95,43 @@ struct ContentView: View {
 
     @ViewBuilder
     private func metricCard(_ metric: MetricCard) -> some View {
-        let card = MetricCardView(
-            metric: metric,
-            isBeingDragged: panelState.draggedMetric == metric.metric
-        )
+        let isBeingDragged = panelState.draggedMetric == metric.metric
+        let isDropTarget = panelState.dragDestinationMetric == metric.metric && !isBeingDragged
 
-        card
-            .onDrag {
-                panelState.beginDragging(metric.metric)
-                return NSItemProvider(object: metric.metric.rawValue as NSString)
-            }
-            .onDrop(
-                of: [UTType.plainText],
-                delegate: MetricDropDelegate(destination: metric.metric, panelState: panelState)
-            )
+        MetricCardView(
+            metric: metric,
+            isBeingDragged: isBeingDragged,
+            isDropTarget: isDropTarget
+        )
+        .offset(y: isBeingDragged ? dragOffset.height : 0)
+        .scaleEffect(isBeingDragged ? 1.015 : 1)
+        .zIndex(isBeingDragged ? 1 : 0)
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 4)
+                .onChanged { value in
+                    if panelState.draggedMetric != metric.metric {
+                        dragOffset = .zero
+                    }
+
+                    dragOffset = value.translation
+                    panelState.updateMetricDrag(
+                        metric.metric,
+                        verticalTranslation: value.translation.height,
+                        slotHeight: MetricCardLayout.slotHeight
+                    )
+                }
+                .onEnded { value in
+                    panelState.endMetricDrag(
+                        metric.metric,
+                        verticalTranslation: value.translation.height,
+                        slotHeight: MetricCardLayout.slotHeight
+                    )
+
+                    withAnimation(.easeOut(duration: 0.16)) {
+                        dragOffset = .zero
+                    }
+                }
+        )
     }
 
     private var footer: some View {
@@ -134,24 +163,6 @@ struct ContentView: View {
                 }
         }
         .buttonStyle(.plain)
-    }
-}
-
-private struct MetricDropDelegate: DropDelegate {
-    let destination: PanelMetric
-    let panelState: PanelState
-
-    func dropEntered(info: DropInfo) {
-        panelState.moveDraggedMetric(to: destination)
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: .move)
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        panelState.finishDragging()
-        return true
     }
 }
 

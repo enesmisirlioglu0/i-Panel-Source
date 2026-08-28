@@ -8,6 +8,7 @@ import SwiftUI
 struct MetricCardView: View {
     let metric: MetricCard
     let isBeingDragged: Bool
+    let isDropTarget: Bool
 
     var body: some View {
         VStack(spacing: 3) {
@@ -62,12 +63,23 @@ struct MetricCardView: View {
         .overlay {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(
-                    isBeingDragged ? metric.metric.tint : .white.opacity(0.60),
-                    lineWidth: isBeingDragged ? 2 : 1
+                    isBeingDragged
+                        ? metric.metric.tint
+                        : isDropTarget
+                            ? .cyan.opacity(0.95)
+                            : .white.opacity(0.60),
+                    lineWidth: isBeingDragged || isDropTarget ? 2 : 1
                 )
         }
+        .shadow(
+            color: isDropTarget ? .cyan.opacity(0.24) : .clear,
+            radius: isDropTarget ? 8 : 0
+        )
         .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(metric.metric.title), \(metric.value), \(metric.status)")
+        .accessibilityHint("Yerini değiştirmek için kartı tutup yukarı veya aşağı sürükleyin.")
+        .animation(.easeInOut(duration: 0.16), value: isBeingDragged)
+        .animation(.easeInOut(duration: 0.16), value: isDropTarget)
     }
 }

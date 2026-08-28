@@ -97,12 +97,14 @@ final class PanelState: ObservableObject {
 
     @Published private(set) var metricOrder = PanelMetric.allCases
     @Published private(set) var draggedMetric: PanelMetric?
+    @Published private(set) var dragDestinationMetric: PanelMetric?
 
-    private var snapshot = SimulatedSnapshot()
+    @Published private var snapshot = SimulatedSnapshot()
     private var simulationTick = 0
     private var simulationTimer: AnyCancellable?
     private var remembersMetricOrder: Bool
     private var refreshInterval: TimeInterval
+    private var dragOriginIndex: Int?
 
     init(
         remembersMetricOrder: Bool = true,
@@ -183,8 +185,15 @@ final class PanelState: ObservableObject {
     }
 
     func resetMetricOrder() {
+        let defaultOrder = PanelMetric.allCases
+
+        guard metricOrder != defaultOrder else {
+            finishDragging()
+            return
+        }
+
         withAnimation(.easeInOut(duration: 0.2)) {
-            metricOrder = PanelMetric.allCases
+            metricOrder = defaultOrder
         }
         persistMetricOrder()
         finishDragging()
@@ -192,31 +201,84 @@ final class PanelState: ObservableObject {
 
     func beginDragging(_ metric: PanelMetric) {
         draggedMetric = metric
+        dragOriginIndex = metricOrder.firstIndex(of: metric)
+        dragDestinationMetric = metric
     }
 
-    func moveDraggedMetric(to destination: PanelMetric) {
+    func updateMetricDrag(
+        _ metric: PanelMetric,
+        verticalTranslation: CGFloat,
+        slotHeight: CGFloat
+    ) {
+        if draggedMetric != metric {
+            beginDragging(metric)
+        }
+
+        guard let dragOriginIndex,
+              slotHeight > 0 else {
+            return
+        }
+
+        let slotDelta = Int((verticalTranslation / slotHeight).rounded())
+        let destinationIndex = min(
+            max(dragOriginIndex + slotDelta, 0),
+            metricOrder.count - 1
+        )
+        dragDestinationMetric = metricOrder[destinationIndex]
+    }
+
+    func endMetricDrag(
+        _ metric: PanelMetric,
+        verticalTranslation: CGFloat,
+        slotHeight: CGFloat
+    ) {
+        updateMetricDrag(
+            metric,
+            verticalTranslation: verticalTranslation,
+            slotHeight: slotHeight
+        )
+
+        guard draggedMetric == metric,
+              let destinationMetric = dragDestinationMetric,
+              let destinationIndex = metricOrder.firstIndex(of: destinationMetric) else {
+            finishDragging()
+            return
+        }
+
+        moveDraggedMetric(toIndex: destinationIndex)
+        finishDragging()
+    }
+
+    func finishDragging() {
+        draggedMetric = nil
+        dragDestinationMetric = nil
+        dragOriginIndex = nil
+    }
+
+    private func moveDraggedMetric(toIndex destinationIndex: Int) {
         guard let draggedMetric,
-              draggedMetric != destination,
               let sourceIndex = metricOrder.firstIndex(of: draggedMetric) else {
+            return
+        }
+
+        let insertionIndex = min(
+            max(destinationIndex, 0),
+            metricOrder.count - 1
+        )
+
+        guard sourceIndex != insertionIndex else {
             return
         }
 
         var reorderedMetrics = metricOrder
         reorderedMetrics.remove(at: sourceIndex)
 
-        guard let destinationIndex = reorderedMetrics.firstIndex(of: destination) else {
-            return
-        }
+        reorderedMetrics.insert(draggedMetric, at: insertionIndex)
 
         withAnimation(.easeInOut(duration: 0.2)) {
-            reorderedMetrics.insert(draggedMetric, at: destinationIndex)
             metricOrder = reorderedMetrics
         }
         persistMetricOrder()
-    }
-
-    func finishDragging() {
-        draggedMetric = nil
     }
 
     private func persistMetricOrder() {

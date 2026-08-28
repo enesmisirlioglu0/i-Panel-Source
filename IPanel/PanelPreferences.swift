@@ -123,10 +123,16 @@ final class PanelPreferences: ObservableObject {
     }
 
     func applyDockIconVisibility() {
-        let policy: NSApplication.ActivationPolicy = showsDockIcon ? .regular : .accessory
-        let didApply = NSApplication.shared.setActivationPolicy(policy)
+        let didApply = Self.applyStoredDockIconVisibility()
 
         dockIconError = didApply ? nil : "Dock simgesi tercihi şu anda uygulanamadı."
+    }
+
+    @discardableResult
+    static func applyStoredDockIconVisibility() -> Bool {
+        let showsDockIcon = UserDefaults.standard.object(forKey: Key.showsDockIcon) as? Bool ?? false
+        let policy: NSApplication.ActivationPolicy = showsDockIcon ? .regular : .accessory
+        return NSApplication.shared.setActivationPolicy(policy)
     }
 
     private static func state(for status: SMAppService.Status) -> LaunchAtLoginState {
