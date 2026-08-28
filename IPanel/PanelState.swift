@@ -91,17 +91,59 @@ private struct SimulatedSnapshot {
 
 @MainActor
 final class PanelState: ObservableObject {
+    private enum StorageKey {
+        static let metricOrder = "metricOrder"
+    }
+
     @Published private(set) var metricOrder = PanelMetric.allCases
     @Published private(set) var draggedMetric: PanelMetric?
 
     private var snapshot = SimulatedSnapshot()
     private var simulationTick = 0
     private var simulationTimer: AnyCancellable?
+    private var remembersMetricOrder: Bool
+    private var refreshInterval: TimeInterval
 
-    init() {
+    init(
+        remembersMetricOrder: Bool = true,
+        refreshInterval: TimeInterval = PanelRefreshInterval.threeSeconds.rawValue
+    ) {
+        self.remembersMetricOrder = remembersMetricOrder
+        self.refreshInterval = refreshInterval
+        metricOrder = remembersMetricOrder ? Self.restoredMetricOrder() : PanelMetric.allCases
+
         refreshSimulation()
+        configureSimulationTimer()
+    }
 
-        simulationTimer = Timer.publish(every: 1.5, on: .main, in: .common)
+    func setRemembersMetricOrder(_ enabled: Bool) {
+        guard remembersMetricOrder != enabled else {
+            return
+        }
+
+        remembersMetricOrder = enabled
+
+        if enabled {
+            persistMetricOrder()
+        } else {
+            UserDefaults.standard.removeObject(forKey: StorageKey.metricOrder)
+            resetMetricOrder()
+        }
+    }
+
+    func setRefreshInterval(_ interval: TimeInterval) {
+        guard refreshInterval != interval else {
+            return
+        }
+
+        refreshInterval = interval
+        configureSimulationTimer()
+    }
+
+    private func configureSimulationTimer() {
+        simulationTimer?.cancel()
+
+        simulationTimer = Timer.publish(every: refreshInterval, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
                 Task { @MainActor [weak self] in
@@ -144,6 +186,7 @@ final class PanelState: ObservableObject {
         withAnimation(.easeInOut(duration: 0.2)) {
             metricOrder = PanelMetric.allCases
         }
+        persistMetricOrder()
         finishDragging()
     }
 
@@ -169,10 +212,33 @@ final class PanelState: ObservableObject {
             reorderedMetrics.insert(draggedMetric, at: destinationIndex)
             metricOrder = reorderedMetrics
         }
+        persistMetricOrder()
     }
 
     func finishDragging() {
         draggedMetric = nil
+    }
+
+    private func persistMetricOrder() {
+        guard remembersMetricOrder else {
+            return
+        }
+
+        UserDefaults.standard.set(metricOrder.map { $0.rawValue }, forKey: StorageKey.metricOrder)
+    }
+
+    private static func restoredMetricOrder() -> [PanelMetric] {
+        guard let storedOrder = UserDefaults.standard.stringArray(forKey: StorageKey.metricOrder) else {
+            return PanelMetric.allCases
+        }
+
+        let restoredOrder = storedOrder.compactMap(PanelMetric.init(rawValue:))
+        guard restoredOrder.count == PanelMetric.allCases.count,
+              Set(restoredOrder).count == PanelMetric.allCases.count else {
+            return PanelMetric.allCases
+        }
+
+        return restoredOrder
     }
 
     private func metricCard(for metric: PanelMetric) -> MetricCard {

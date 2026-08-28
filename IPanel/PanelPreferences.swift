@@ -15,16 +15,49 @@ enum LaunchAtLoginState: Equatable {
     case unavailable
 }
 
+enum PanelRefreshInterval: Double, CaseIterable, Identifiable {
+    case oneSecond = 1
+    case threeSeconds = 3
+    case fiveSeconds = 5
+
+    var id: Double { rawValue }
+
+    var title: String {
+        switch self {
+        case .oneSecond:
+            "1 sn"
+        case .threeSeconds:
+            "3 sn"
+        case .fiveSeconds:
+            "5 sn"
+        }
+    }
+}
+
 @MainActor
 final class PanelPreferences: ObservableObject {
     private enum Key {
         static let showsDockIcon = "showsDockIcon"
+        static let remembersMetricOrder = "remembersMetricOrder"
+        static let refreshInterval = "refreshInterval"
     }
 
     @Published var showsDockIcon: Bool {
         didSet {
             UserDefaults.standard.set(showsDockIcon, forKey: Key.showsDockIcon)
             applyDockIconVisibility()
+        }
+    }
+
+    @Published var remembersMetricOrder: Bool {
+        didSet {
+            UserDefaults.standard.set(remembersMetricOrder, forKey: Key.remembersMetricOrder)
+        }
+    }
+
+    @Published var refreshInterval: PanelRefreshInterval {
+        didSet {
+            UserDefaults.standard.set(refreshInterval.rawValue, forKey: Key.refreshInterval)
         }
     }
 
@@ -36,6 +69,10 @@ final class PanelPreferences: ObservableObject {
 
     init() {
         showsDockIcon = UserDefaults.standard.object(forKey: Key.showsDockIcon) as? Bool ?? false
+        remembersMetricOrder = UserDefaults.standard.object(forKey: Key.remembersMetricOrder) as? Bool ?? true
+        refreshInterval = PanelRefreshInterval(
+            rawValue: UserDefaults.standard.double(forKey: Key.refreshInterval)
+        ) ?? .threeSeconds
         launchAtLoginState = Self.state(for: SMAppService.mainApp.status)
         launchAtLoginError = nil
         dockIconError = nil

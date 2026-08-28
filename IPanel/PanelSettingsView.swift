@@ -9,6 +9,7 @@ import SwiftUI
 
 struct PanelSettingsView: View {
     @ObservedObject var preferences: PanelPreferences
+    @ObservedObject var panelState: PanelState
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -44,6 +45,22 @@ struct PanelSettingsView: View {
             } label: {
                 Label("Görünüm", systemImage: "dock.rectangle")
             }
+
+            GroupBox {
+                VStack(alignment: .leading, spacing: 10) {
+                    Toggle("Kart sırasını hatırla", isOn: remembersMetricOrderBinding)
+
+                    Picker("Yenileme sıklığı", selection: refreshIntervalBinding) {
+                        ForEach(PanelRefreshInterval.allCases) { interval in
+                            Text(interval.title).tag(interval)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+                .padding(.top, 2)
+            } label: {
+                Label("Panel", systemImage: "slider.horizontal.3")
+            }
         }
         .padding(20)
         .frame(width: 390)
@@ -59,6 +76,26 @@ struct PanelSettingsView: View {
         Binding(
             get: { preferences.isLaunchAtLoginEnabled },
             set: { preferences.setLaunchAtLogin($0) }
+        )
+    }
+
+    private var remembersMetricOrderBinding: Binding<Bool> {
+        Binding(
+            get: { preferences.remembersMetricOrder },
+            set: { enabled in
+                preferences.remembersMetricOrder = enabled
+                panelState.setRemembersMetricOrder(enabled)
+            }
+        )
+    }
+
+    private var refreshIntervalBinding: Binding<PanelRefreshInterval> {
+        Binding(
+            get: { preferences.refreshInterval },
+            set: { interval in
+                preferences.refreshInterval = interval
+                panelState.setRefreshInterval(interval.rawValue)
+            }
         )
     }
 
@@ -99,5 +136,5 @@ struct PanelSettingsView: View {
 }
 
 #Preview {
-    PanelSettingsView(preferences: PanelPreferences())
+    PanelSettingsView(preferences: PanelPreferences(), panelState: PanelState())
 }

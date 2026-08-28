@@ -6,11 +6,19 @@
 import AppKit
 import SwiftUI
 
+enum PanelLayout {
+    static let width: CGFloat = 336
+    static let height: CGFloat = 532
+}
+
 @main
 @MainActor
 final class IPanelAppDelegate: NSObject, NSApplicationDelegate {
-    private let panelState = PanelState()
     private let preferences = PanelPreferences()
+    private lazy var panelState = PanelState(
+        remembersMetricOrder: preferences.remembersMetricOrder,
+        refreshInterval: preferences.refreshInterval.rawValue
+    )
     private let popover = NSPopover()
 
     private var statusItem: NSStatusItem?
@@ -25,7 +33,7 @@ final class IPanelAppDelegate: NSObject, NSApplicationDelegate {
     private func configurePopover() {
         popover.behavior = .transient
         popover.animates = true
-        popover.contentSize = NSSize(width: 450, height: 660)
+        popover.contentSize = NSSize(width: PanelLayout.width, height: PanelLayout.height)
         popover.contentViewController = NSHostingController(
             rootView: ContentView(onOpenSettings: { [weak self] in
                 self?.showSettings()
@@ -64,7 +72,10 @@ final class IPanelAppDelegate: NSObject, NSApplicationDelegate {
             settingsWindow.makeKeyAndOrderFront(nil)
         } else {
             let hostingController = NSHostingController(
-                rootView: PanelSettingsView(preferences: preferences)
+                rootView: PanelSettingsView(
+                    preferences: preferences,
+                    panelState: panelState
+                )
             )
             let settingsWindow = NSWindow(contentViewController: hostingController)
             settingsWindow.title = "i-Panel Ayarları"

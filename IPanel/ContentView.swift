@@ -13,21 +13,23 @@ struct ContentView: View {
     @EnvironmentObject private var panelState: PanelState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 8) {
             header
 
             ScrollView {
-                LazyVStack(spacing: 10) {
+                LazyVStack(spacing: 6) {
                     ForEach(panelState.orderedMetrics) { metric in
                         metricCard(metric)
                     }
                 }
                 .padding(.vertical, 2)
             }
+            .scrollIndicators(.never)
+            .frame(height: 398)
 
             footer
         }
-        .padding(18)
+        .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(panelGradient, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay {
@@ -35,8 +37,8 @@ struct ContentView: View {
                 .stroke(.white.opacity(0.72), lineWidth: 1)
         }
         .shadow(color: .black.opacity(0.22), radius: 18, y: 10)
-        .padding(10)
-        .frame(width: 450, height: 660)
+        .padding(8)
+        .frame(width: PanelLayout.width, height: PanelLayout.height)
     }
 
     private var panelGradient: LinearGradient {
@@ -55,9 +57,9 @@ struct ContentView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            PanelMark(width: 25)
-                .frame(width: 40, height: 40)
+        HStack(alignment: .center, spacing: 10) {
+            PanelMark(width: 22)
+                .frame(width: 36, height: 36)
                 .background(markPetrol, in: Circle())
                 .overlay {
                     Circle()
@@ -77,7 +79,7 @@ struct ContentView: View {
             .help("Simülasyon verilerini yenile")
 
         }
-        .padding(.bottom, 10)
+        .padding(.bottom, 7)
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(.white.opacity(0.62))
@@ -107,15 +109,31 @@ struct ContentView: View {
         HStack(spacing: 8) {
             Spacer()
 
-            Button("Ayar", action: onOpenSettings)
-            .buttonStyle(.link)
-
-            Button("Sıfırla") {
+            footerActionButton("Ayar", systemImage: "gearshape", action: onOpenSettings)
+            footerActionButton("Sıfırla", systemImage: "arrow.counterclockwise") {
                 panelState.resetMetricOrder()
             }
-            .buttonStyle(.link)
         }
-        .font(.caption)
+    }
+
+    private func footerActionButton(
+        _ title: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(markPetrol)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(.white.opacity(0.78), in: Capsule())
+                .overlay {
+                    Capsule()
+                        .stroke(.white.opacity(0.95), lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
     }
 }
 

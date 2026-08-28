@@ -4,27 +4,27 @@ i-Panel, macOS menü çubuğunda çalışan küçük bir durum göstergesi ve h�
 
 ## Başlangıç durumu
 
-- Sürüm: `1.0 (Build 1)`
+- Sürüm: `1.1 (Build 2)`
 - Hedef: macOS 13 ve sonrası
-- Arayüz: SwiftUI `MenuBarExtra`
+- Arayüz: SwiftUI + AppKit `NSStatusItem` ve geçici `NSPopover`
 - Derleme doğrulaması: 28 Ağustos 2026'da Xcode 26.6 ile, imzalama kapalı Faz 1 temiz macOS Debug derlemesi başarılı
 - Manuel menü çubuğu etkileşim doğrulaması: Henüz yapılmadı
 - Dağıtım: Henüz indirilebilir DMG veya GitHub Release yoktur.
 
-Apple'ın kendi Denetim Merkezi içine üçüncü taraf modül eklemek için genel kullanıma açık bir API'si yoktur. i-Panel bu yüzden Denetim Merkezi'nin yanındaki menü çubuğunda, Apple'ın desteklediği `MenuBarExtra` yapısıyla çalışır.
+Apple'ın kendi Denetim Merkezi içine üçüncü taraf modül eklemek için genel kullanıma açık bir API'si yoktur. i-Panel bu yüzden Denetim Merkezi'nin yanındaki menü çubuğunda, yerel `NSStatusItem` ve geçici `NSPopover` yapısıyla çalışır.
 
 ## Faz 1: simülasyon paneli
 
 - Menü çubuğunda i-Panel göstergesi
 - Sağ üst simgeye bağlı, turkuaz tonlu büyük açılır panel
 - CPU, bellek, disk, batarya sıcaklığı/durumu ve anlık indirme/yükleme için beş kart
-- Her 1,5 saniyede güncellenen, inandırıcı fakat tamamen simüle edilmiş değerler
-- Kartları her an doğrudan sürükle-bırak yöntemiyle taşıma ve varsayılan sıraya dönme
+- Ayarlardan seçilen 1 / 3 / 5 saniyelik yenileme aralığıyla güncellenen, inandırıcı fakat tamamen simüle edilmiş değerler
+- Kartları her an doğrudan sürükle-bırak yöntemiyle taşıma, bu sırayı yerelde hatırlama ve varsayılan sıraya dönme
 - Alt sağda `Ayar` ve `Sıfırla` denetimleri
 - Panel dışındaki bir arayüz öğesine tıklanınca otomatik kapanan yerel macOS popover davranışı
-- Ayarlardan kalıcı Dock simgesi görünürlüğü ve macOS girişinde açılma isteği
+- Ayarlardan kalıcı Dock simgesi görünürlüğü, macOS girişinde açılma isteği, kart sırasını hatırlama ve yenileme sıklığı
 
-Bu faz gerçek CPU/bellek/disk/batarya/ağ verisi toplamaz, ağa bağlanmaz ve bulut hesabı kullanmaz. Sürükle-bırak sırası bu ilk aşamada yalnız açık oturum boyunca korunur. Dock görünürlüğü kullanıcı tercihidir; girişte açılma anahtarı yalnız kullanıcı onu açtığında macOS'a kayıt isteği yollar.
+Bu faz gerçek CPU/bellek/disk/batarya/ağ verisi toplamaz, ağa bağlanmaz ve bulut hesabı kullanmaz. Kart sırası, yenileme tercihi ve Dock görünürlüğü yalnız cihazdaki yerel tercih olarak saklanır; yeni bir gizlilik veya yönetici izni istenmez. Girişte açılma anahtarı yalnız kullanıcı onu açtığında macOS'a kayıt isteği yollar.
 
 ### Başlangıçta açılma sınırı
 
